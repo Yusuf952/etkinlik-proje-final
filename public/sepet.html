@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Sepetim</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    #cartList {
+      margin-top: 20px;
+    }
+
+    #cartList li {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- GİRİŞ KONTROLÜ -->
+  <script>
+    const userEmail = localStorage.getItem("userEmail");
+    if (!userEmail) {
+      window.location.href = "index.html";
+    }
+  </script>
+
+  <div class="container">
+    <h1>Sepetim</h1>
+    <ul id="cartList"></ul>
+    <p><strong>Toplam:</strong> <span id="total">0.00</span> TL</p>
+
+    <!-- BİLET TÜRÜ ve ÖDEME YÖNTEMİ SEÇİMİ -->
+    <div style="margin-top: 20px;">
+      <label for="biletTuru">Bilet Türü:</label>
+      <select id="biletTuru">
+        <option value="Standart">Standart</option>
+        <option value="VIP">VIP</option>
+      </select>
+    </div>
+
+    <div style="margin-top: 10px;">
+      <label for="odemeYontemi">Ödeme Yöntemi:</label>
+      <select id="odemeYontemi">
+        <option value="Kredi Kartı">Kredi Kartı</option>
+        <option value="Havale">Havale</option>
+      </select>
+    </div>
+
+    <button id="payButton" style="margin-top: 15px;">Ödeme Yap</button>
+
+    <p style="margin-top: 20px;">
+      <a href="etkinlikler.html">← Etkinliklere Dön</a>
+    </p>
+  </div>
+
+  <script>
+    const cartList = document.getElementById("cartList");
+    const totalSpan = document.getElementById("total");
+    const payButton = document.getElementById("payButton");
+    const biletTuru = document.getElementById("biletTuru");
+    const odemeYontemi = document.getElementById("odemeYontemi");
+
+    let sepetVerisi = [];
+
+    function guncelleSepetGorunumu() {
+      cartList.innerHTML = "";
+      let toplam = 0;
+      const vipMi = biletTuru.value === "VIP";
+
+      if (!Array.isArray(sepetVerisi) || sepetVerisi.length === 0) {
+        cartList.innerHTML = "<li>Sepetiniz boş.</li>";
+        payButton.disabled = true;
+        totalSpan.textContent = "0.00";
+        return;
+      }
+
+      sepetVerisi.forEach(item => {
+        const name = item.name ?? "Bilinmeyen Etkinlik";
+        const basePrice = parseFloat(item.price ?? 0);
+        const price = vipMi ? basePrice + 50 : basePrice;
+
+        const li = document.createElement("li");
+        li.textContent = `${name} - ${price.toFixed(2)} TL`;
+        cartList.appendChild(li);
+
+        toplam += price;
+      });
+
+      totalSpan.textContent = toplam.toFixed(2);
+      payButton.disabled = false;
+    }
+
+    // Sepeti sunucudan al
+    fetch(`/cart?email=${encodeURIComponent(userEmail)}`)
+      .then(res => res.json())
+      .then(data => {
+        sepetVerisi = data;
+        guncelleSepetGorunumu();
+      })
+      .catch(() => {
+        cartList.innerHTML = "<li>Sepet alınamadı (sunucu hatası).</li>";
+        payButton.disabled = true;
+      });
+
+    // Bilet türü değişince fiyatları güncelle
+    biletTuru.addEventListener("change", guncelleSepetGorunumu);
+
+    // Ödeme işlemi
+    payButton.addEventListener("click", async () => {
+      const vipMi = biletTuru.value === "VIP";
+      let toplam = 0;
+
+      sepetVerisi.forEach(item => {
+        const basePrice = parseFloat(item.price ?? 0);
+        const price = vipMi ? basePrice + 50 : basePrice;
+        toplam += price;
+      });
+
+      const onay = confirm(`Toplam ${toplam.toFixed(2)} TL ödeme yapacaksınız. Onaylıyor musunuz?`);
+      if (!onay) return;
+
+      const secilenBiletTuru = biletTuru.value;
+      const secilenOdemeYontemi = odemeYontemi.value;
+
+      try {
+        const res = await fetch("/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            biletTuru: secilenBiletTuru,
+            odemeYontemi: secilenOdemeYontemi
+          })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          alert("Ödeme başarılı! Sepetiniz temizlendi.");
+          cartList.innerHTML = "<li>Sepetiniz boş.</li>";
+          totalSpan.textContent = "0.00";
+          payButton.disabled = true;
+        } else {
+          alert(result.message || "Ödeme sırasında hata oluştu.");
+        }
+      } catch (err) {
+        alert("Sunucuya ulaşılamadı.");
+      }
+    });
+  </script>
+</body>
+</html>

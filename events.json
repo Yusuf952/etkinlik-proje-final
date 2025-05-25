@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Buz pateni",
+    "price": 100,
+    "date": "2025-06-10",
+    "kontenjan": 198
+  },
+  {
+    "name": "Açık hava sineması",
+    "price": 250,
+    "date": "2025-06-15",
+    "kontenjan": 193
+  },
+  {
+    "name": "Tekne Turu",
+    "price": 300,
+    "date": "2025-06-20",
+    "kontenjan": 194
+  },
+  {
+    "name": "Tiyatro",
+    "price": 150,
+    "date": "2025-06-25",
+    "kontenjan": 198
+  },
+  {
+    "name": "Paintball",
+    "price": 450,
+    "date": "2025-06-12",
+    "kontenjan": 197
+  },
+  {
+    "name": "Çarpışan araba",
+    "price": 420,
+    "date": "2025-06-22",
+    "kontenjan": 197
+  },
+  {
+    "name": "Buz pateni",
+    "price": 130,
+    "date": "2025-06-18",
+    "kontenjan": 200
+  }
+]

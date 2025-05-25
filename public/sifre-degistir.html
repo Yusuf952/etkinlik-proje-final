@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Şifre Değiştir</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Şifre Değiştir</h1>
+    <form id="changePasswordForm">
+      <input type="password" id="newPassword" placeholder="Yeni şifre" required />
+      <input type="password" id="confirmPassword" placeholder="Yeni şifre (tekrar)" required />
+      <button type="submit">Şifreyi Güncelle</button>
+    </form>
+  </div>
+
+  <script>
+    const email = localStorage.getItem("userEmail");
+
+    if (!email) {
+      window.location.href = "index.html";
+    }
+
+    const form = document.getElementById("changePasswordForm");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const newPassword = document.getElementById("newPassword").value;
+      const confirmPassword = document.getElementById("confirmPassword").value;
+
+      if (newPassword !== confirmPassword) {
+        return alert("Şifreler uyuşmuyor.");
+      }
+
+      const res = await fetch("/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, newPassword })
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        alert("Şifre başarıyla güncellendi!");
+        window.location.href = "etkinlikler.html";
+      } else {
+        alert(result.message || "Şifre güncellenemedi.");
+      }
+    });
+  </script>
+</body>
+</html>

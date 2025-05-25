@@ -1,0 +1,16 @@
+[
+  {
+    "email": "admin@gmail.com",
+    "password": "1234",
+    "role": "admin",
+    "approved": true,
+    "mustChangePassword": false
+  },
+  {
+    "email": "yusufbugraefe@gmail.com",
+    "password": "lolgamer55",
+    "role": "user",
+    "approved": true,
+    "mustChangePassword": false
+  }
+]

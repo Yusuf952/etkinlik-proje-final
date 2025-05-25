@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Etkinlikler</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="favicon.ico" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    .container {
+      max-width: 700px;
+      margin: 80px auto 40px;
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      position: relative;
+    }
+    h1 {
+      text-align: center;
+      color: #222;
+      margin-bottom: 24px;
+    }
+    #weatherBox {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #e3f2fd;
+      padding: 10px 14px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 500;
+      color: #1565c0;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+    }
+    ul#eventList {
+      list-style: none;
+      padding: 0;
+    }
+    ul#eventList li {
+      background: #f1f8ff;
+      margin-bottom: 16px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    select {
+      margin-top: 6px;
+      padding: 5px;
+      border-radius: 6px;
+    }
+    .kontenjan {
+      margin-top: 6px;
+      font-weight: 600;
+      color: #444;
+      display: inline-block;
+    }
+    button {
+      margin-top: 8px;
+      padding: 6px 12px;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) {
+      background-color: #0d47a1;
+    }
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    a {
+      color: #1976d2;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .duyuru-sabit {
+      position: fixed;
+      top: 100px;
+      left: 20px;
+      background-color: #fffde7;
+      border-left: 4px solid #fdd835;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #555;
+      border-radius: 6px;
+      max-width: 220px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      z-index: 999;
+    }
+    @media (max-width: 800px) {
+      .duyuru-sabit {
+        position: static;
+        max-width: 100%;
+        margin: 0 auto 16px;
+      }
+      .container {
+        margin: 100px 20px 20px;
+      }
+      #weatherBox {
+        position: static;
+        margin-bottom: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<script>
+  const email = localStorage.getItem("userEmail");
+  if (!email) {
+    window.location.href = "index.html";
+  }
+</script>
+
+<div class="duyuru-sabit">
+  Duyuru: İstanbulda yağışlı ve rüzgarlı havalarda açık hava etkinlikleri gerçekleştirilmeyecektir!
+</div>
+
+<div class="container">
+  <h1>Etkinlikler</h1>
+
+  <div id="weatherBox">
+    İstanbul Hava Durumu:<br>
+    <span id="weatherText">Yükleniyor...</span> <span id="weatherTemp"></span>
+  </div>
+
+  <ul id="eventList"></ul>
+
+  <p style="text-align:center; margin-top: 30px;">
+    <a href="sepet.html">🛒 Sepete Git</a>
+  </p>
+</div>
+
+<script>
+  let sepeteEkleniyor = false;
+
+  function slugify(text) {
+    return text.toString().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/ç/g, 'c').replace(/ğ/g, 'g')
+      .replace(/ı/g, 'i').replace(/ö/g, 'o')
+      .replace(/ş/g, 's').replace(/ü/g, 'u')
+      .replace(/[^a-zA-Z0-9]/g, '-')
+      .toLowerCase();
+  }
+
+  fetch("/events")
+    .then(res => res.json())
+    .then(data => {
+      const list = document.getElementById("eventList");
+
+      if (!Array.isArray(data) || data.length === 0) {
+        list.innerHTML = "<li>Etkinlik bulunamadı.</li>";
+        return;
+      }
+
+      data.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      data.forEach(event => {
+        const name = event.name ?? "Etkinlik";
+        const basePrice = parseFloat(event.price ?? 0);
+        const quota = parseInt(event.kontenjan ?? 200);
+        let date = "Tarih yok";
+
+        const slug = slugify(name);
+
+        if (event.date) {
+          const parsedDate = new Date(event.date);
+          if (!isNaN(parsedDate)) {
+            date = parsedDate.toLocaleDateString("tr-TR", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric"
+            });
+          }
+        }
+
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <strong>${name}</strong> - ${basePrice.toFixed(2)} TL (Standart)<br>
+          📅 <em>${date}</em><br>
+          <label for="type-${slug}">Bilet Türü:</label>
+          <select id="type-${slug}">
+            <option value="standart">Standart</option>
+            <option value="vip">VIP (+50₺)</option>
+          </select><br>
+          <span class="kontenjan">Kalan Kontenjan: <span class="quota-count">${quota}</span></span><br>
+          <button ${quota <= 0 ? 'disabled' : ''}>
+            ${quota <= 0 ? 'Tükendi' : 'Sepete Ekle'}
+          </button>
+        `;
+
+        const btn = li.querySelector("button");
+        const select = li.querySelector("select");
+        const quotaSpan = li.querySelector(".quota-count");
+
+        btn.addEventListener("click", () => {
+          const selectedType = select.value;
+          let finalPrice = basePrice;
+          if (selectedType === "vip") finalPrice += 50;
+
+          sepeteEkle({
+            name,
+            price: finalPrice,
+            type: selectedType.toUpperCase()
+          }, quotaSpan, btn);
+        });
+
+        list.appendChild(li);
+      });
+    })
+    .catch(() => {
+      document.getElementById("eventList").innerHTML = "<li>Etkinlikler yüklenemedi.</li>";
+    });
+
+  function sepeteEkle(event, quotaElement, buttonElement) {
+    if (sepeteEkleniyor) return;
+    sepeteEkleniyor = true;
+
+    const email = localStorage.getItem("userEmail");
+
+    fetch("/add-to-cart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, item: event })
+    })
+      .then(res => res.json())
+      .then(result => {
+        sepeteEkleniyor = false;
+        if (result.success) {
+          alert(`"${event.name}" (${event.type}) sepete eklendi.`);
+
+          let currentQuota = parseInt(quotaElement.textContent);
+          if (!isNaN(currentQuota) && currentQuota > 0) {
+            currentQuota--;
+            quotaElement.textContent = currentQuota;
+            if (currentQuota === 0) {
+              buttonElement.disabled = true;
+              buttonElement.textContent = "Tükendi";
+            }
+          }
+
+        } else {
+          alert(result.message || "Sepete eklenemedi.");
+        }
+      })
+      .catch(() => {
+        sepeteEkleniyor = false;
+        alert("Sunucu hatası.");
+      });
+  }
+
+  async function getWeather() {
+    const API_KEY = "4Az9cxY3MYrkMVplCEf3O1n4tBUSkzOa";
+    const CITY_KEY = "318251";
+
+    try {
+      const res = await fetch(`https://dataservice.accuweather.com/currentconditions/v1/${CITY_KEY}?apikey=${API_KEY}&language=tr-tr`);
+      const data = await res.json();
+      const durum = data[0].WeatherText;
+      const sicaklik = data[0].Temperature.Metric.Value;
+
+      document.getElementById("weatherText").textContent = durum;
+      document.getElementById("weatherTemp").textContent = `(${sicaklik}°C)`;
+    } catch (err) {
+      document.getElementById("weatherBox").textContent = "Hava durumu alınamadı.";
+    }
+  }
+
+  getWeather();
+</script>
+
+</body>
+</html>

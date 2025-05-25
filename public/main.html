@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Etkinlik Paneli</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <script>
+    const email = localStorage.getItem("userEmail");
+    if (!email) {
+      window.location.href = "index.html";
+    } else {
+      fetch(`/get-user?email=${email}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.role !== "admin") {
+            window.location.href = "etkinlikler.html";
+          }
+        });
+    }
+  </script>
+
+  <div class="container">
+    <h1>Etkinlik Yönetim Paneli</h1>
+    <p>Hoş geldiniz. Sisteme giriş yaptınız.</p>
+
+    <h2>İstanbul Hava Durumu</h2>
+    <div id="weather">Yükleniyor...</div>
+
+    <h2>Duyurular</h2>
+    <ul id="announcementsList"><li>Yükleniyor...</li></ul>
+
+    <form id="announcementForm">
+      <input type="text" id="announcementTitle" placeholder="Duyuru başlığı" required />
+      <button type="submit">Duyuru Ekle</button>
+    </form>
+
+    <h2>Etkinlik Önerileri</h2>
+    <ul id="suggestionsList"><li>Yükleniyor...</li></ul>
+
+    <h2>Yeni Etkinlik Ekle</h2>
+    <form id="eventForm">
+      <input type="text" id="eventName" placeholder="Etkinlik adı" required />
+      <input type="number" id="eventPrice" placeholder="Fiyat (TL)" required />
+      <input type="date" id="eventDate" required />
+      <button type="submit">Ekle</button>
+    </form>
+
+    <h2>Etkinlikler</h2>
+    <ul id="eventList"></ul>
+
+    <h2>Bekleyen Kullanıcılar</h2>
+    <ul id="pendingList"></ul>
+
+    <a href="index.html">Çıkış Yap</a>
+  </div>
+
+  <script>
+    function loadWeather() {
+      fetch('/weather')
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("weather").textContent = `${data.temperature}°C - ${data.description}`;
+        })
+        .catch(() => {
+          document.getElementById("weather").textContent = "Hava durumu yüklenemedi.";
+        });
+    }
+
+    function loadAnnouncements() {
+      fetch("/announcements")
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById("announcementsList");
+          list.innerHTML = "";
+          if (!Array.isArray(data) || data.length === 0) {
+            list.innerHTML = "<li>Henüz duyuru yok.</li>";
+            return;
+          }
+          data.forEach(a => {
+            const li = document.createElement("li");
+            li.textContent = `${a.title} - ${a.date}`;
+            list.appendChild(li);
+          });
+        })
+        .catch(() => {
+          document.getElementById("announcementsList").innerHTML = "<li>Duyurular yüklenemedi.</li>";
+        });
+    }
+
+    function loadSuggestions() {
+      fetch("/suggestions")
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById("suggestionsList");
+          list.innerHTML = "";
+          if (!Array.isArray(data) || data.length === 0) {
+            list.innerHTML = "<li>Henüz öneri yok.</li>";
+            return;
+          }
+          data.forEach(s => {
+            const li = document.createElement("li");
+            li.textContent = s.text;
+            list.appendChild(li);
+          });
+        })
+        .catch(() => {
+          document.getElementById("suggestionsList").innerHTML = "<li>Öneriler yüklenemedi.</li>";
+        });
+    }
+
+    function loadEvents() {
+      fetch("/events")
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById("eventList");
+          list.innerHTML = "";
+
+          if (!Array.isArray(data) || data.length === 0) {
+            list.innerHTML = "<li>Henüz etkinlik eklenmemiş.</li>";
+            return;
+          }
+
+          data.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+          data.forEach(event => {
+            const li = document.createElement("li");
+            li.textContent = `${event.name} - ${Number(event.price).toFixed(2)} TL - ${event.date} `;
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Sil";
+            deleteBtn.addEventListener("click", () => deleteEvent(event.id));
+            li.appendChild(deleteBtn);
+            list.appendChild(li);
+          });
+        })
+        .catch(() => {
+          document.getElementById("eventList").innerHTML = "<li>Etkinlikler yüklenemedi.</li>";
+        });
+    }
+
+    function deleteEvent(id) {
+      if (!confirm("Bu etkinliği silmek istediğinize emin misiniz?")) return;
+      fetch(`/events/${id}`, {
+        method: "DELETE"
+      })
+        .then(res => res.json())
+        .then(result => {
+          if (result.success) {
+            loadEvents();
+          } else {
+            alert(result.message || "Etkinlik silinemedi.");
+          }
+        })
+        .catch(() => alert("Sunucu hatası oluştu."));
+    }
+
+    document.getElementById("eventForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("eventName").value.trim();
+      const price = parseFloat(document.getElementById("eventPrice").value);
+      const date = document.getElementById("eventDate").value;
+
+      if (!name || isNaN(price) || price < 0 || !date) {
+        return alert("Geçerli etkinlik adı, fiyat ve tarih giriniz.");
+      }
+
+      const res = await fetch("/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price, date })
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        document.getElementById("eventName").value = "";
+        document.getElementById("eventPrice").value = "";
+        document.getElementById("eventDate").value = "";
+        loadEvents();
+      } else {
+        alert(result.message || "Etkinlik eklenemedi.");
+      }
+    });
+
+    document.getElementById("announcementForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("announcementTitle").value.trim();
+      if (!title) return alert("Duyuru başlığı giriniz.");
+
+      const res = await fetch("/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title })
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        document.getElementById("announcementTitle").value = "";
+        loadAnnouncements();
+      } else {
+        alert(result.message || "Duyuru eklenemedi.");
+      }
+    });
+
+    function loadPendingUsers() {
+      fetch("/pending-users")
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById("pendingList");
+          list.innerHTML = "";
+
+          if (!Array.isArray(data) || data.length === 0) {
+            list.innerHTML = "<li>Bekleyen kullanıcı yok.</li>";
+            return;
+          }
+
+          data.forEach(user => {
+            const li = document.createElement("li");
+            const button = document.createElement("button");
+            button.textContent = "Onayla";
+            button.addEventListener("click", () => approveUser(user.email));
+            li.textContent = user.email + " ";
+            li.appendChild(button);
+            list.appendChild(li);
+          });
+        })
+        .catch(() => {
+          document.getElementById("pendingList").innerHTML = "<li>Bekleyen kullanıcılar yüklenemedi.</li>";
+        });
+    }
+
+    function approveUser(email) {
+      fetch("/approve-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      })
+        .then(res => res.json())
+        .then(result => {
+          if (result.success) {
+            alert("Kullanıcı onaylandı.");
+            loadPendingUsers();
+          } else {
+            alert(result.message || "Onaylama başarısız.");
+          }
+        })
+        .catch(() => alert("Sunucu hatası oluştu."));
+    }
+
+    loadWeather();
+    loadAnnouncements();
+    loadSuggestions();
+    loadEvents();
+    loadPendingUsers();
+  </script>
+</body>
+</html>
